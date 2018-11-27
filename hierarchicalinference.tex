@@ -1,0 +1,212 @@
+% This file is part of the MCMC project,
+%   which is (in turn) part of the Data Analysis Recipes project.
+% Copyright 2013, 2014, 2015, 2016, 2017 David W. Hogg (NYU) and Dan Foreman-Mackey (NYU, UW).
+
+% style notes
+% -----------
+% - \MCMC not MCMC
+% - [LaTeX] newline after every full stop for proper git diffing
+% - [LaTeX] eqnarray not equation
+% - pdf not PDF
+% - Is it ``a MCMC sampling'' or ``an MCMC sampling''?
+% - \note{} right after word if you are endnoting a phrase,
+%   but after the full stop if endnoting the sentence or paragraph.
+% - Always $\pars$ never $x$; $K$ samples $\pars_k$ and $\pars$ space is $D$-dimensional
+% - Should we use the word ``walker'' everywhere and do we?
+
+\documentclass[modern]{aastex61}
+
+%/\usepackage{amssymb}
+%\usepackage{amsmath}
+%\usepackage{mathrsfs}
+\usepackage{natbib}
+\usepackage{float}
+\usepackage{graphicx}
+
+% Figure captions
+%\makeatletter
+%\newsavebox{\tempbox}
+%\newcommand{\@makefigcaption}[2]{%
+%\vspace{-10pt}{#1.--- #2\par}}%
+% \renewcommand{\figure}{\let\@makecaption\@makefigcaption\@float{figure}}
+%\makeatother
+
+% No overflow
+\setlength{\emergencystretch}{2em}
+
+% Typeography
+\newcommand{\project}[1]{\textsl{#1}}
+\newcommand{\foreign}[1]{\textsl{#1}}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newenvironment{pseudocode}{\begin{ttfamily}\detokenize\obeylines}{}
+\newcommand{\aposteriori}{\foreign{a~posteriori}}
+\newcommand{\apriori}{\foreign{a~priori}}
+\newcommand{\adhoc}{\foreign{ad~hoc}}
+\newcommand{\etal}{\foreign{et al.}}
+\newcommand{\eg}{\foreign{e.g.}}
+\newcommand{\vs}{\foreign{vs.}}
+\newcommand{\acronym}[1]{{\scalebox{0.9}{#1}}}
+
+% Notes
+\newcommand{\notename}{footnote}
+\newcommand{\note}[1]{\footnote{#1}}
+
+% Problems
+\newcommand{\problemname}{Problem}
+\newcounter{problem}
+\newenvironment{problem}{\refstepcounter{problem}\par\medskip\noindent\textbf{\problemname~\theproblem:}}{}
+
+% Math stuff
+\newcommand{\mmatrix}[1]{\boldsymbol{#1}}
+\newcommand{\inverse}[1]{{#1}^{-1}}
+\newcommand{\transpose}[1]{{#1}^{\scriptscriptstyle \top}}
+\newcommand{\parametervector}[1]{\mmatrix{#1}}
+\newcommand{\bvec}[1]{\mmatrix{#1}}
+\newcommand{\setof}[1]{\{{#1}\}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\given}{\,|\,}
+\newcommand{\mean}[1]{\left<{#1}\right>}
+
+% Space, headers and margins
+\setlength{\parindent}{3.0ex}
+\addtolength{\topmargin}{-0.45in}
+\addtolength{\textheight}{-0.35in}
+
+% References.
+\usepackage{color,hyperref}
+\definecolor{linkcolor}{rgb}{0,0,0.5}
+\hypersetup{colorlinks=true,linkcolor=linkcolor,citecolor=linkcolor,
+            filecolor=linkcolor,urlcolor=linkcolor}
+\newcommand{\arxiv}[1]{\href{http://arxiv.org/abs/#1}{\textsl{arXiv}:#1}}
+%\newcommand{\doi}[1]{\href{http://doi.org/#1}{\textsc{doi}:#1}}
+\newcommand{\isbn}[1]{\textsc{isbn:}#1}
+
+\usepackage{needspace}
+
+\shorttitle{Hierarchical Inference}
+\shortauthors{leistedt \& hogg}
+
+\newcommand{\MCMC}{\acronym{MCMC}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\data}{D}
+\newcommand{\pars}{\theta}
+\newcommand{\best}{{\mathrm{(best)}}}
+\newcommand{\better}{{\mathrm{(better)}}}
+
+\begin{document}\sloppy\sloppypar\raggedbottom\frenchspacing\thispagestyle{plain}%
+%
+\title{Data analysis recipes:\\
+       Inference with Hierarchical Models%
+\note{\label{note:first}%
+Copyright 2018 the authors.
+        This work is licensed under a
+        \href{http://creativecommons.org/licenses/by-nc-nd/3.0/deed.en\_US}{%
+            Creative Commons Attribution-NonCommercial-NoDerivs 3.0 Unported
+            License}.}}%
+
+
+\author[0000-0002-3962-9274]{Boris Leistedt}
+\affil{Center for Cosmology and Particle Physics, Department of Physics, New
+York University, New York, NY}
+\affil{NASA Einstein Fellow}
+
+\author[0000-0003-2866-9403]{David W. Hogg}
+\affil{Center for Computational Astrophysics, Flatiron Institute, 162 Fifth Ave, New York, NY 10010, USA}
+\affil{Center for Cosmology and Particle Physics, Department of Physics, New York University, 726 Broadway, New York, NY 10003, USA}
+\affil{Center for Data Science, New York University, 60 Fifth Ave, New York, NY 10011, USA}
+\affil{Max-Planck-Institut f\"ur Astronomie, K\"onigstuhl 17, D-69117 Heidelberg}
+
+
+\begin{abstract}\noindent
+Hierarchical probabilistic modeling has become increasingly popular in the sciences for fitting data with large models involving multiple layers of parameters and complex causal structure.  
+Performing stable and efficient inference on such models can be challenging owing to the large number of parameters.
+In this pedagogical contribution, we give a brief overview of the standard inference strategies applicable to hierarchical models.
+We study a few examples that are analogous to a wide range of real models, and discuss how to design adequate inference strategies. 
+The prerequisites for this note are a basic understanding of Bayesian inference and approximate inference via Monte Carlo Markov Chain.
+\end{abstract}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{}\label{}
+%
+%{\bf Audience}
+%\begin{itemize}
+%\item early grad students or advanced un
+%\item natural sciences
+%\item know Bayes and MCMC but not PGMs
+%\end{itemize}
+%
+%{\bf Examples}
+%\begin{itemize}
+%\item GMM(x) with x errors
+%\item Fitting a line or multiple lines or a curve with x-y errors. Limit of infinite variance (missing data)
+%\end{itemize}
+%
+%{\bf Topics}
+%\begin{itemize}
+%\item Non-parametrics (Ndata ~ Npar)
+%\item GIBBS (and EM)
+%\item HMC
+%\item VI
+%\item Hybrid MCMC
+%\item Causal structure
+%\item Mixing
+%\item Independent sampling trick (using posterior samples)
+%\item Shrinkage
+%\item Terminology 
+%\item PGMs as notation
+%\item Deconvolution
+%\item Marginalization 
+%\item Latent variables
+%\item Model selection
+%\end{itemize}
+
+\begin{itemize}
+\item \textbf{0) fitting a line}
+\item - PGM notation and how this is also a hierarchical model
+\item - recall standard Bayesian inference and MCMC
+\item \textbf{A) unobserved x's with errors with distribution prior}
+\item - derive full posterior. Too many parameters for standard MCMC!
+\item - conjugate priors, analytic marginalization, and back to standard MCMC
+\item - HMC on all parameters. Advice on how to always provide analytic derivatives.
+\item - Limit of infinite variance (missing data)
+\item - Causal structure, generating x, etc
+\item - Shrinkage
+\item - Discussion of Empirical Bayes, optimize hyperparameters, etc 
+\item - Exercise: fitting a plane to data. Affine invariant prior.
+\item \textbf{B) fitting a curve}
+\item - funky analytic marginalization
+\item - difficult to sample without HMC?
+\item \textbf{C) GMM(x)}
+\item - latent variables, mixture model, flexibility of representation
+\item - Gibbs and EM
+\item - Mixing
+\item - HMC
+\item - model selection, nested samplings, reversible jump
+\item - GPM complexity for multiple components
+\item - VI solution?
+\item \textbf{D) fitting multiple lines}
+\item - Gibbs and EM
+\item - Mixing
+\item - HMC
+\item - Hybrid MCMC
+\end{itemize}
+
+
+
+\acknowledgements
+We would like to thank X.
+
+\clearpage
+\raggedright
+\begin{thebibliography}{}\markright{References}
+
+\bibitem[Brooks \etal(2011)]{mcmchandbook}
+  Brooks,~S., Gelman~A., Jones~G., \& Meng,~X.-L., eds.\ 2011,
+  \href{http://www.mcmchandbook.net/HandbookTableofContents.html}{\textit{Handbook of Markov Chain Monte Carlo}},
+  Chapman and Hall~/~CRC Press
+  \isbn{978-1-4200-7941-8}.
+
+\end{thebibliography}
+
+\end{document}
